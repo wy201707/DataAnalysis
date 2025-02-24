@@ -1,4 +1,4 @@
-import pandas as pd
+﻿import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import hashlib
@@ -6,7 +6,7 @@ import pandas as pd
 import re
 
 # 加载数据
-data = pd.read_excel('data2.17.xlsx', sheet_name='Sheet1')
+data = pd.read_excel('data/data2.17.xlsx', sheet_name='Sheet1')
 
 # 显示前几行数据
 print("原始数据示例：")
@@ -135,21 +135,40 @@ else:
 print("\n转换后的日期示例：")
 print(data[['patient_id', '姓名', '就诊时间']].head(10))
 
-'''
-# 确保就诊时间为日期类型
-data['就诊时间'] = pd.to_datetime(data['就诊时间'], errors='coerce')
 
 # 按患者和就诊时间排序
 data = data.sort_values(by=['patient_id', '就诊时间'])
 
-# 计算每个患者的就诊次数
+# 计算每个患者的就诊次数 1为初次就诊 大于1为复诊
 data['diagnosis_num'] = data.groupby('patient_id').cumcount() + 1
 
 print("就诊次数示例：")
 print(data[['patient_id', '姓名', '就诊时间', 'diagnosis_num']].head(10))
 
-'''
-'''
+# 新增校验逻辑（插入在日期转换之后，排序之前）
+# 转换就诊时间为标准datetime格式
+data['就诊时间_dt'] = pd.to_datetime(data['就诊时间'], errors='coerce')
+
+# 按患者ID和时间排序确保时序
+data = data.sort_values(by=['patient_id', '就诊时间_dt'])
+
+# 计算重复标记
+data['日期标记'] = data['就诊时间_dt'].dt.date.astype(str)
+data['重复序号'] = data.groupby(['patient_id', '日期标记']).cumcount()
+
+# 执行清洗策略
+mask = data['重复序号'] >= 1
+data.loc[mask, '姓名'] = data.loc[mask, '姓名'] + '待核实'
+modified_records = data.loc[mask, ['姓名', '性别', '就诊类型', '手机号', '日期标记']].rename(
+    columns={'日期标记': '就诊日期'})
+
+# 输出清洗结果
+print("\n同名同号同日重复记录处理结果：")
+print(modified_records[['姓名', '手机号', '就诊日期']].to_string(index=False))
+
+# 清理中间字段
+data = data.drop(columns=['就诊时间_dt', '日期标记', '重复序号'])
+
 # 假设未来新增复诊记录（示例）
 new_data = pd.DataFrame({
     '姓名': ['张三'],
@@ -174,5 +193,6 @@ new_data['diagnosis_num'] = new_data.groupby('patient_id').cumcount() + 1
 print("新增复诊后的示例：")
 print(new_data[['patient_id', '姓名', '就诊时间', 'diagnosis_num']].tail(3))
 
-'''
-data.to_excel('cleaned_data2.xlsx', index=False)
+
+data.to_excel('data/cleaned_data34.xlsx', index=False)
+
