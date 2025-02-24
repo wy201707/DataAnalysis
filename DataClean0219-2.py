@@ -12,50 +12,23 @@ data = pd.read_excel('data2.17.xlsx', sheet_name='Sheet1')
 print("原始数据示例：")
 print(data[['姓名', '性别', '手机号', '就诊时间']].head(6))
 
+# 标记复诊记录
+data['就诊类型'] = data['性别'].apply(lambda x: '复诊' if x == '复诊' else '初诊')
+
+
+
+
 # 提取初诊患者的手机号映射
 baseline_data = data[data['性别'].isin(['1', '2', 1, 2])]  # 初诊记录
 phone_mapping = baseline_data.set_index('姓名')['手机号'].to_dict()
 
-# 标记复诊记录并填充手机号
-data['就诊类型'] = data['性别'].apply(lambda x: '复诊' if x == '复诊' else '初诊')
+# 填充复诊记录的手机号
 data['手机号'] = data.apply(
     lambda row: phone_mapping.get(row['姓名'], None) if row['就诊类型'] == '复诊' else row['手机号'],
     axis=1
 )
 
-print("性别处理1后的数据：")
-print(data[['姓名', '性别', '就诊类型']].head())
 
-
-# # 将性别列转换为字符串类型，避免数值和字符串混合
-# data['性别'] = data['性别'].astype(str)
-
-# # 标记初诊和复诊记录
-# data['就诊类型'] = data['性别'].apply(lambda x: '复诊' if x == '复诊' else '初诊')
-
-# 为每个患者填充初诊性别到复诊记录中
-# 步骤1：提取初诊患者的性别
-baseline_gender = data[data['就诊类型'] == '初诊'][['姓名', '性别']].rename(columns={'性别': '初诊性别'})
-
-# 步骤2：合并初诊性别到所有记录
-data = pd.merge(data, baseline_gender, on='姓名', how='left')
-
-# 步骤3：用初诊性别覆盖复诊记录的性别
-data['性别'] = data.apply(lambda row: row['初诊性别'] if row['就诊类型'] == '复诊' else row['性别'], axis=1)
-data = data.drop(columns='初诊性别')
-
-
-print("性别处理2后的数据：")
-print(data[['姓名', '性别', '就诊类型']].head())
-
-# 映射性别编码为文字
-data['性别'] = data['性别'].map({1: '男性', 2: '女性'})
-
-print("性别处理3后的数据：")
-print(data[['姓名', '性别', '就诊类型']].head())
-
-
-'''
 # 按姓名和手机号（或者初诊时间）生成唯一ID
 def generate_patient_id(row):
     # 清洗姓名和手机号
@@ -76,23 +49,55 @@ if data['patient_id'].isnull().any():
     print("警告：存在无法生成patient_id的记录！")
     print(data[data['patient_id'].isnull()])
 
+print("手机号+姓名生成patientID后的数据：")
+print(data[['patient_id','姓名', '手机号', '就诊类型']].head())
 
-'''
+
+# print("性别处理1后的数据：")
+# print(data[['姓名', '性别', '就诊类型']].head())
+
+baseline_gender = data[data['就诊类型'] == '初诊'][['姓名', '性别']].rename(columns={'性别': '初诊性别'})
+
+# 步骤2：合并初诊性别到所有记录
+data = pd.merge(data, baseline_gender, on='姓名', how='left')
+
+# 步骤3：用初诊性别覆盖复诊记录的性别
+data['性别'] = data.apply(lambda row: row['初诊性别'] if row['就诊类型'] == '复诊' else row['性别'], axis=1)
+data = data.drop(columns='初诊性别')
+# print("性别处理2后的数据：")
+# print(data[['姓名', '性别', '就诊类型']].head())
+
+# 映射性别编码为文字  这里再覆盖复诊未填写个人信息时候需要排除 姓名 就诊时间 性别三列
+data['性别'] = data['性别'].map({1: '男性', 2: '女性'})
+
+print("性别处理3后的数据：")
+print(data[['姓名', '性别', '就诊类型']].head())
+
+
+
 # 统一转换为标准日期格式
 print(data['就诊时间'].dtype)  # 检查列类型
 print(data['就诊时间'].apply(type).value_counts())  # 查看实际存储类型
-
-'''
-# 定义正则表达式匹配DD/MM/YYYY格式的日期
-pattern = r'(\d{2})/(\d{2})/(\d{4})'
-
-# 定义转换函数
+# 先确保是字符串类型
 def convert_date(date_str):
-    match = re.match(pattern, date_str)
+    # 处理空值或无效输入
+    if not isinstance(date_str, str) or date_str.strip() == '':
+        return 'Invalid Date'
+    
+    # 尝试匹配 DD/MM/YYYY 格式
+    match = re.match(r'(\d{2})/(\d{2})/(\d{4})', date_str)
     if match:
         day, month, year = match.groups()
         return f"{year}/{month}/{day}"
-    return date_str
+    else:
+        # 处理 Excel 日期序列号
+        try:
+            excel_date = int(float(date_str))
+            return pd.to_datetime(excel_date, unit='d', origin='1899-12-30').strftime('%Y/%m/%d')
+        except:
+            return 'Invalid Date'
+
+
 
 # 对日期列应用转换函数
 data['就诊时间'] = data['就诊时间'].apply(convert_date)
@@ -100,7 +105,7 @@ data['就诊时间'] = data['就诊时间'].apply(convert_date)
 print("诊疗时间：")
 print(data[['patient_id', '姓名', '就诊时间']].head(10))
 
-
+'''
 # 确保就诊时间为日期类型
 data['就诊时间'] = pd.to_datetime(data['就诊时间'], errors='coerce')
 
@@ -140,4 +145,4 @@ print("新增复诊后的示例：")
 print(new_data[['patient_id', '姓名', '就诊时间', 'diagnosis_num']].tail(3))
 
 '''
-data.to_excel('cleaned_data.xlsx', index=False)
+data.to_excel('cleaned_data2.xlsx', index=False)
