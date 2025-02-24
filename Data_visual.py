@@ -40,8 +40,8 @@ for pid in sample_patients:
     patient_data = data[data['patient_id'] == pid]
     plt.plot(patient_data['diagnosis_time'], patient_data['indicator2'], marker='o', label=f'Patient {pid}')
 plt.xlabel('Diagnosis Time')
-plt.ylabel('VAS Score')
-plt.title('VAS Score Changes for Sampled Patients')
+plt.ylabel('indicator2')
+plt.title('indicator2 Changes for Sampled Patients')
 plt.legend()
 plt.show()
 
@@ -72,9 +72,9 @@ plt.show()
 
 # 绘制VAS评分变化箱线图
 sns.boxplot(x='treatment_group', y='VAS_change', data=data_change)
-plt.title('VAS Score Change by Treatment Group')
+plt.title('indicator2 Change by Treatment Group')
 plt.show()
-
+'''
 # 描述性统计
 print("Baseline Data Description:")
 print(baseline_data[['indicator2', 'indicator3', 'indicator4']].describe())
@@ -100,3 +100,4 @@ for metric in ['indicator2', 'indicator3', 'indicator4']:
 print("Follow-up Data Normality Test:")
 for metric in ['indicator2', 'indicator3', 'indicator4']:
     check_normality(follow_up_data, metric)
+'''
