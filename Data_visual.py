@@ -1,13 +1,13 @@
-import pandas as pd
+﻿import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 import pandas as pd
 ################## 初步数据清理结束，开始统计  ##########################
-data = pd.read_excel('cleaned_data.xlsx')
+data = pd.read_excel('data/cleaned_data34.xlsx')
 
 
-key_metrics = ['TCM_syndromes_score', 'indicator2', 'indicator3', 'indicator4']
+key_metrics = ['indicator1', 'indicator2', 'indicator3', 'indicator4']
 
 
 
@@ -69,3 +69,34 @@ for i, metric in enumerate(key_metrics, 1):
 plt.tight_layout()
 plt.show()
 
+
+# 绘制VAS评分变化箱线图
+sns.boxplot(x='treatment_group', y='VAS_change', data=data_change)
+plt.title('VAS Score Change by Treatment Group')
+plt.show()
+
+# 描述性统计
+print("Baseline Data Description:")
+print(baseline_data[['indicator2', 'indicator3', 'indicator4']].describe())
+
+print("Follow-up Data Description:")
+print(follow_up_data[['indicator2', 'indicator3', 'indicator4']].describe())
+
+# 正态性检验
+from scipy.stats import shapiro
+
+def check_normality(data, column):
+    stat, p = shapiro(data[column])
+    print(f'{column}: p-value = {p}')
+    if p > 0.05:
+        print(f'{column} 符合正态分布')
+    else:
+        print(f'{column} 不符合正态分布')
+
+print("Baseline Data Normality Test:")
+for metric in ['indicator2', 'indicator3', 'indicator4']:
+    check_normality(baseline_data, metric)
+
+print("Follow-up Data Normality Test:")
+for metric in ['indicator2', 'indicator3', 'indicator4']:
+    check_normality(follow_up_data, metric)
