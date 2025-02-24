@@ -1,0 +1,14 @@
+# 忽略所有 .log 文件
+*.log
+
+# 忽略一个名为 node_modules 的文件夹
+node_modules/
+data/
+wyMyself/
+中间文件/
+重要文件/
+
+
+# 忽略一个特定的文件
+# 
+config.env
