@@ -73,36 +73,66 @@ data['性别'] = data['性别'].map({1: '男性', 2: '女性'})
 print("性别处理3后的数据：")
 print(data[['姓名', '性别', '就诊类型']].head())
 
-
-
 # 统一转换为标准日期格式
-print(data['就诊时间'].dtype)  # 检查列类型
-print(data['就诊时间'].apply(type).value_counts())  # 查看实际存储类型
-# 先确保是字符串类型
-def convert_date(date_str):
-    # 处理空值或无效输入
-    if not isinstance(date_str, str) or date_str.strip() == '':
-        return 'Invalid Date'
+# 定义日期转换函数
+def convert_date(date_val):
+    """
+    支持以下格式的日期转换：
+    1. Excel日期序列号（如 45366 → 2024/03/15）
+    2. 字符串格式 DD/MM/YYYY（如 20/09/2024 → 2024/09/20）
+    3. 字符串格式 YYYY/MM/DD（直接保留）
+    """
+    try:
+        # 处理数值型Excel日期序列号
+        if isinstance(date_val, (int, float)):
+            return pd.to_datetime(date_val, unit='d', origin='1899-12-30').strftime('%Y/%m/%d')
+        
+        # 转换为字符串并清理空格
+        date_str = str(date_val).strip()
+        
+        # 处理空值
+        if date_str in ["", "nan", "NaT"]:
+            return "Invalid Date"
+        
+        # 尝试匹配 DD/MM/YYYY 格式
+        match_ddmmyyyy = re.match(r'^(\d{1,2})/(\d{1,2})/(\d{4})$', date_str)
+        if match_ddmmyyyy:
+            day, month, year = match_ddmmyyyy.groups()
+            return f"{year}/{month.zfill(2)}/{day.zfill(2)}"  # 统一补零
+        
+        # 尝试匹配 YYYY/MM/DD 格式
+        match_yyyymmdd = re.match(r'^(\d{4})/(\d{1,2})/(\d{1,2})$', date_str)
+        if match_yyyymmdd:
+            year, month, day = match_yyyymmdd.groups()
+            return f"{year}/{month.zfill(2)}/{day.zfill(2)}"  # 统一补零
+        
+        # 处理其他可能的格式（如YYYY-MM-DD）
+        return pd.to_datetime(date_str, errors='coerce').strftime('%Y/%m/%d')
     
-    # 尝试匹配 DD/MM/YYYY 格式
-    match = re.match(r'(\d{2})/(\d{2})/(\d{4})', date_str)
-    if match:
-        day, month, year = match.groups()
-        return f"{year}/{month}/{day}"
-    else:
-        # 处理 Excel 日期序列号
-        try:
-            excel_date = int(float(date_str))
-            return pd.to_datetime(excel_date, unit='d', origin='1899-12-30').strftime('%Y/%m/%d')
-        except:
-            return 'Invalid Date'
+    except:
+        return "Invalid Date"
+
+# 统一处理日期列
+data['就诊时间'] = (
+    data['就诊时间']
+    .astype(str)  # 强制转换为字符串
+    .str.strip()   # 去除首尾空格
+    .replace({'nan': '', 'NaT': ''}, regex=False)  # 清理缺失值标记
+    .apply(convert_date)
+)
+
+# 检查无效日期
+invalid_dates = data[data['就诊时间'] == 'Invalid Date']
+if not invalid_dates.empty:
+    print("发现以下无效日期记录，请手动检查：")
+    print(invalid_dates[['patient_id', '姓名', '就诊时间']])
+else:
+    print("所有日期已成功转换！")
 
 
 
-# 对日期列应用转换函数
-data['就诊时间'] = data['就诊时间'].apply(convert_date)
-
-print("诊疗时间：")
+# 显示结果
+print("\n转换后的日期示例：")
 print(data[['patient_id', '姓名', '就诊时间']].head(10))
 
 '''
